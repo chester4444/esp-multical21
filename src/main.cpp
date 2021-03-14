@@ -12,28 +12,27 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
-#include <SoftwareSerial.h>
-#include <WiFiUdp.h>
+#if defined(ESP8266)
+  #include <ESP8266WiFi.h>
+  #include <ESP8266mDNS.h>
+  #include <SoftwareSerial.h>
+#elif defined(ESP32)
+  #include <WiFi.h>
+  #include <ESPmDNS.h>
+#endif
 #include <PubSubClient.h>
 #include <ArduinoOTA.h>
 #include "WaterMeter.h"
 #include "credentials.h"
+#include "hwconfig.h"
 
-#define ESP_NAME "ESP-Meter"
-
-// Attach CC1101 pins to ESP8266 SPI pins
-// VCC   => 3V3
-// GND   => GND
-// CSN   => D8
-// MOSI  => D7
-// MISO  => D6
-// SCK   => D5
-// GD0   => D2  A valid interrupt pin for your platform (defined below this)
-// GD2   => not connected 
+#define ESP_NAME "WaterMeter"
 
 #define DEBUG 0
+
+#if defined(ESP32)
+  #define LED_BUILTIN 4
+#endif
 
 //Wifi settings: SSID, PW, MQTT broker
 #define NUM_SSID_CREDENTIALS  3

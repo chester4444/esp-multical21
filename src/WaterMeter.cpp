@@ -13,6 +13,7 @@
 */
 
 #include "WaterMeter.h"
+#include "hwconfig.h"
 
 WaterMeter::WaterMeter()
 {
@@ -37,7 +38,7 @@ inline void WaterMeter::waitMiso(void)
 }
 
 // write a single register of CC1101
-void WaterMeter::writeReg(uint8 regAddr, uint8 value) 
+void WaterMeter::writeReg(uint8_t regAddr, uint8_t value) 
 {
   selectCC1101();                      // Select CC1101
   waitMiso();                          // Wait until MISO goes low
@@ -47,7 +48,7 @@ void WaterMeter::writeReg(uint8 regAddr, uint8 value)
 }
 
 // send a strobe command to CC1101
-void WaterMeter::cmdStrobe(uint8 cmd) 
+void WaterMeter::cmdStrobe(uint8_t cmd) 
 {
   selectCC1101();                      // Select CC1101
   delayMicroseconds(5);
@@ -58,9 +59,9 @@ void WaterMeter::cmdStrobe(uint8 cmd)
 }
 
 // read CC1101 register (status or configuration)
-uint8 WaterMeter::readReg(uint8 regAddr, uint8 regType)
+uint8_t WaterMeter::readReg(uint8_t regAddr, uint8_t regType)
 {
-  uint8 addr, val;
+  uint8_t addr, val;
 
   addr = regAddr | regType;
   selectCC1101();                      // Select CC1101
@@ -73,9 +74,9 @@ uint8 WaterMeter::readReg(uint8 regAddr, uint8 regType)
 }
 
 // 
-void WaterMeter::readBurstReg(uint8 * buffer, uint8 regAddr, uint8 len) 
+void WaterMeter::readBurstReg(uint8_t * buffer, uint8_t regAddr, uint8_t len) 
 {
-  uint8 addr, i;
+  uint8_t addr, i;
   
   addr = regAddr | READ_BURST;
   selectCC1101();                      // Select CC1101

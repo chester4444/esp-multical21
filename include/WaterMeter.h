@@ -43,8 +43,6 @@
 #define MARCSTATE_RXTX_SWITCH      0x15
 #define MARCSTATE_TXFIFO_UNDERFLOW 0x16
 
-#define CC1101_GDO0 D2   // GDO0 input interrupt pin
-
 #define WRITE_BURST              0x40
 #define READ_SINGLE              0x80
 #define READ_BURST               0xC0
