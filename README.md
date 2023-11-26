@@ -68,13 +68,13 @@ is published in **watermeter/0/total**
 Connect your ESP8266/ESP32 to the CC1101 868Mhz module:
 | CC1101 | ESP8266 | ESP32 |
 |--------|:-------:|:-----:|
-| VCC    | 3V3     | 3V3 |
-| GND    | GND     | GND |
-| CSN    | D8     | 4 |
-| MOSI   | D7     | 23 |
-| MISO   | D6     | 19 |
-| SCK    | D5     | 18 |
-| GD0    | D2      | 32 |
-| GD2    | not connected| not connected|
+| VCC    | 3V3     | 3V3   |
+| GND    | GND     | GND   |
+| CSN    | D8      | 4     |
+| MOSI   | D7      | 23    |
+| MISO   | D6      | 19    |
+| SCK    | D5      | 18    |
+| GDO0   | D2      | 32    |
+| GDO2   | not connected| not connected|
 
 Thanks to [weetmuts](https://github.com/weetmuts) for his great job on the wmbusmeters.
