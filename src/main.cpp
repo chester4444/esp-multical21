@@ -15,7 +15,6 @@
 #if defined(ESP8266)
   #include <ESP8266WiFi.h>
   #include <ESP8266mDNS.h>
-  #include <SoftwareSerial.h>
 #elif defined(ESP32)
   #include <WiFi.h>
   #include <ESPmDNS.h>
@@ -23,62 +22,24 @@
 #include <PubSubClient.h>
 #include <ArduinoOTA.h>
 #include "WaterMeter.h"
-#include "credentials.h"
-#include "hwconfig.h"
+//#include "config.h"
 
-#define ESP_NAME "WaterMeter"
+CREDENTIAL currentWifi; // global to store found wifi
 
-#define DEBUG 0
-
-#if defined(ESP32)
-  #define LED_BUILTIN 4
-#endif
-
-//Wifi settings: SSID, PW, MQTT broker
-#define NUM_SSID_CREDENTIALS  3
-const char *credentials[NUM_SSID_CREDENTIALS][4] =  
-  // SSID,        PW,           MQTT
-  { {SSID1,       PW1,          MQTT1 }
-  , {SSID2,       PW2,          MQTT2 }
-  , {SSID3,       PW3,          MQTT3 }
-  };
-
-WaterMeter waterMeter;
+uint8_t wifiConnectCounter = 0; // count retries
 
 WiFiClient espMqttClient;
 PubSubClient mqttClient(espMqttClient);
+WaterMeter waterMeter(mqttClient);
 
 char MyIp[16];
 int cred = -1;
+bool mqttEnabled = false;   // true, if a broker is given in credentials.h
 
-int getWifiToConnect(int numSsid)
-{
-  for (int i = 0; i < NUM_SSID_CREDENTIALS; i++)
-  {
-    //Serial.println(WiFi.SSID(i));
-    
-    for (int j = 0; j < numSsid; ++j)
-    {
-      /*Serial.print(j);
-      Serial.print(": ");
-      Serial.print(WiFi.SSID(i).c_str());
-      Serial.print(" = ");
-      Serial.println(credentials[j][0]);*/
-      if (strcmp(WiFi.SSID(j).c_str(), credentials[i][0]) == 0)
-      {
-        Serial.println("Credentials found for: ");
-        Serial.println(credentials[i][0]);
-        return i;
-      }
-    }
-  }
-  return -1;
-}
-
-// connect to wifi – returns true if successful or false if not
 bool ConnectWifi(void)
 {
   int i = 0;
+  bool isWifiValid = false;
 
   Serial.println("starting scan");
   // scan for nearby networks:
@@ -93,48 +54,69 @@ bool ConnectWifi(void)
     Serial.println("Couldn't get a wifi connection");
     return false;
   }
-  
+
   for (int i = 0; i < numSsid; i++)
   {
-    Serial.print(i+1);
-    Serial.print(") ");
-    Serial.println(WiFi.SSID(i));
+    Serial.print(i + 1);
+    Serial.print(". ");
+    Serial.print(WiFi.SSID(i));
+    Serial.print("  ");
+    Serial.println(WiFi.RSSI(i));
   }
 
   // search for given credentials
-  cred = getWifiToConnect(numSsid);
-  if (cred == -1)
+  for (CREDENTIAL credential : credentials)
   {
-    Serial.println("No Wifi!");
+    for (int j = 0; j < numSsid; ++j)
+    {
+      if (strcmp(WiFi.SSID(j).c_str(), credential.ssid) == 0)
+      {
+        Serial.print("credentials found for: ");
+        Serial.println(credential.ssid);
+        currentWifi = credential;
+        isWifiValid = true;
+      }
+    }
+  }
+
+  if (!isWifiValid)
+  {
+    Serial.println("no matching credentials");
     return false;
   }
 
   // try to connect
-  WiFi.begin(credentials[cred][0], credentials[cred][1]);
+  Serial.println(WiFi.macAddress());
+
+  // try to connect WPA
+  WiFi.begin(currentWifi.ssid, currentWifi.password);
+  WiFi.setHostname(ESP_NAME);
   Serial.println("");
   Serial.print("Connecting to WiFi ");
-  Serial.println(credentials[cred][0]);
+  Serial.println(currentWifi.ssid);
 
   i = 0;
   while (WiFi.status() != WL_CONNECTED)
   {
-    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(PIN_LED_BUILTIN, LOW);
     delay(300);
-    Serial.print(".");
-    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.print(F("."));
+    digitalWrite(PIN_LED_BUILTIN, HIGH);
     delay(300);
-    if (i++ > 30)
+    if (i++ > 50)
     {
       // giving up
-      return false;
+      ESP.restart();
+      return false;   // gcc shut up
     }
   }
+
   return true;
 }
 
 void mqttDebug(const char* debug_str)
 {
-    String s="/watermeter/debug";
+    String s=MQTT_PREFIX"/debug";
     mqttClient.publish(s.c_str(), debug_str);
 }
 
@@ -151,24 +133,18 @@ void mqttCallback(char* topic, byte* payload, unsigned int len)
   Serial.print(" ");
   Serial.println((char)payload[0]); // FIXME LEN
 */
-  if (strstr(topic, "/smarthomeNG/start"))
+  if (strstr(topic, "smarthomeNG/start"))
   {
     if (len == 4) // True
     {
       // maybe to something
     }
   }
-  else if (strstr(topic, "/espmeter/reset"))
+  else if (strstr(topic, MQTT_PREFIX "/reset"))
   {
     if (len == 4) // True
     {
       // maybe to something
-      const char *topic = "/espmeter/reset/status";
-      const char *msg = "False";
-      mqttClient.publish(topic, msg);
-      mqttClient.loop();
-      delay(200);
-
       // reboot
       ESP.restart();
     }
@@ -179,45 +155,59 @@ void mqttCallback(char* topic, byte* payload, unsigned int len)
 
 bool mqttConnect()
 {
-  mqttClient.setServer(credentials[cred][2], 1883);
+  bool connected=false;
+
+  Serial.print("try to connect to MQTT server ");
+  Serial.println(currentWifi.mqtt_broker);
+
+  // use given MQTT broker
+  mqttClient.setServer(currentWifi.mqtt_broker, 1883);
+    
+  // connect client with retainable last will message
+  if (strlen(currentWifi.mqtt_username) && strlen(currentWifi.mqtt_password))
+  {
+    Serial.print("with user: ");
+    Serial.println(currentWifi.mqtt_username);
+    // connect with user/pass
+    connected = mqttClient.connect( ESP_NAME
+                                  , currentWifi.mqtt_username
+                                  , currentWifi.mqtt_password
+                                  , MQTT_PREFIX"/online"
+                                  , 0
+                                  , true
+                                  , "False"
+                                  );
+  }
+  else
+  {
+    // connect without user/pass
+    connected = mqttClient.connect(ESP_NAME, MQTT_PREFIX"/online", 0, true, "False");
+  }
+
   mqttClient.setCallback(mqttCallback);
 
-  // connect client to retainable last will message
-  return mqttClient.connect(ESP_NAME, "/watermeter/online", 0, true, "False");
+  return connected;
 }
 
 void mqttSubscribe()
 {
-  String s;
   // publish online status
-  s = "/watermeter/online";
-  mqttClient.publish(s.c_str(), "True", true);
+  mqttClient.publish(MQTT_PREFIX "/online", "True", true);
 //  Serial.print("MQTT-SEND: ");
 //  Serial.print(s);
 //  Serial.println(" True");
   
   // publish ip address
-  s="/watermeter/ipaddr";
   IPAddress MyIP = WiFi.localIP();
   snprintf(MyIp, 16, "%d.%d.%d.%d", MyIP[0], MyIP[1], MyIP[2], MyIP[3]);
-  mqttClient.publish(s.c_str(), MyIp, true);
+  mqttClient.publish(MQTT_PREFIX"/ipaddr", MyIp, true);
 //  Serial.print("MQTT-SEND: ");
 //  Serial.print(s);
 //  Serial.print(" ");
 //  Serial.println(MyIp);
 
-  // if smarthome.py restarts -> publish init values
-  s = "/smarthomeNG/start";
-  mqttClient.subscribe(s.c_str());
-
-  // if True; meter data are published every 5 seconds
-  // if False: meter data are published once a minute
-  s = "/watermeter/liveData";
-  mqttClient.subscribe(s.c_str());
-
   // if True -> perform an reset
-  s = "/espmeter/reset";
-  mqttClient.subscribe(s.c_str());
+  mqttClient.subscribe(MQTT_PREFIX"/reset");
 }
 
 void setupOTA()
@@ -259,23 +249,16 @@ void setupOTA()
   ArduinoOTA.begin();
 }
 
-// receive encrypted packets -> send it via MQTT to decrypter
-void waterMeterLoop()
-{
-  if (waterMeter.isFrameAvailable())
-  {
-    // publish meter info via MQTT
-
-  }
-}
-
 void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
 
     Serial.begin(115200);
 
-    waterMeter.begin();
+    uint8_t key[16] = { ENCRYPTION_KEY }; // AES-128 key
+    uint8_t id[4] = { SERIAL_NUMBER }; // Multical21 serial number
+
+    waterMeter.begin(key, id);
     Serial.println("Setup done...");
 }
 
@@ -286,6 +269,7 @@ enum ControlStateType
   , StateMqttConnect
   , StateConnected
   , StateOperating
+  , StateOperatingNoWifi
   };
 ControlStateType ControlState = StateInit;
 
@@ -309,7 +293,11 @@ void loop()
     case StateWifiConnect:
       //Serial.println("StateWifiConnect:");
       // station mode
-      ConnectWifi();
+      if (ConnectWifi() == false)
+      {
+        ControlState = StateOperatingNoWifi;
+        break;
+      }
 
       delay(500);
       
@@ -317,13 +305,25 @@ void loop()
       {
         Serial.println("");
         Serial.print("Connected to ");
-        Serial.println(credentials[cred][0]); // FIXME
+        Serial.println(currentWifi.ssid);
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP());
 
         setupOTA();
         
-        ControlState = StateMqttConnect;
+        if (strlen(currentWifi.mqtt_broker)) // MQTT is used
+        {
+          mqttEnabled = true;
+          ControlState = StateMqttConnect;
+        }
+        else
+        {
+          // no MQTT server -> go operating
+          mqttEnabled = false;
+          ControlState = StateOperating;
+          Serial.println(F("MQTT not enabled"));
+          Serial.println(F("StateOperating:"));
+        }
       }
       else
       {
@@ -342,25 +342,33 @@ void loop()
       Serial.println("StateMqttConnect:");
       digitalWrite(LED_BUILTIN, HIGH); // off
 
+      waterMeter.enableMqtt(false);
+
       if (WiFi.status() != WL_CONNECTED)
       {
         ControlState = StateNotConnected;
         break; // exit (hopefully) switch statement
       }
       
-      Serial.print("try to connect to MQTT server ");
-      Serial.println(credentials[cred][2]); // FIXME
-
-      if (mqttConnect())
+      if (mqttEnabled)
       {
-        ControlState = StateConnected;
+        if (mqttConnect())
+        {
+          ControlState = StateConnected;
+          waterMeter.enableMqtt(true);
+        }
+        else
+        {
+          Serial.println("MQTT connect failed");
+
+          delay(1000);
+          // try again
+        }
       }
       else
       {
-        Serial.println("MQTT connect failed");
-
-        delay(1000);
-        // try again
+        // no MQTT is used at all
+        ControlState = StateConnected;
       }
       ArduinoOTA.handle();
       
@@ -369,20 +377,27 @@ void loop()
     case StateConnected:
       Serial.println("StateConnected:");
 
-      if (!mqttClient.connected())
+      if (mqttEnabled)
       {
-        ControlState = StateMqttConnect;
-        delay(1000);
+        if (!mqttClient.connected())
+        {
+          ControlState = StateMqttConnect;
+          delay(1000);
+        }
+        else
+        {
+          // subscribe to given topics
+          mqttSubscribe();
+          
+          ControlState = StateOperating;
+          digitalWrite(LED_BUILTIN, LOW); // on
+          Serial.println("StateOperating:");
+          //mqttDebug("up and running");
+        }
       }
       else
       {
-        // subscribe to given topics
-        mqttSubscribe();
-        
         ControlState = StateOperating;
-        digitalWrite(LED_BUILTIN, LOW); // on
-        Serial.println("StateOperating:");
-        //mqttDebug("up and running");
       }
       ArduinoOTA.handle();
       
@@ -397,19 +412,27 @@ void loop()
         break; // exit (hopefully switch statement)
       }
 
-      if (!mqttClient.connected())
+      if (mqttEnabled)
       {
-        Serial.println("not connected to MQTT server");
-        ControlState = StateMqttConnect;
+        if (!mqttClient.connected())
+        {
+          Serial.println("not connected to MQTT server");
+          ControlState = StateMqttConnect;
+        }
+
+        mqttClient.loop();
       }
 
       // here we go
-      waterMeterLoop();
-
-      mqttClient.loop();
+      waterMeter.loop();
 
       ArduinoOTA.handle();
 
+      break;
+
+    case StateOperatingNoWifi:
+
+      waterMeter.loop();
       break;
 
     default:

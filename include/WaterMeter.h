@@ -17,7 +17,12 @@
 
 #include <Arduino.h>
 #include <SPI.h>
-#include "WMBusFrame.h"
+#include <Crypto.h>
+#include <AES.h>
+#include <CTR.h>
+#include <PubSubClient.h>
+#include "config.h"
+#include "utils.h"
 
 #define MARCSTATE_SLEEP            0x00
 #define MARCSTATE_IDLE             0x01
@@ -179,50 +184,72 @@
 class WaterMeter
 {
   private:
+    const uint32_t RECEIVE_TIMEOUT = 300000UL;  // in millis
+    const uint32_t PACKET_TIMEOUT = 180000UL; // in seconds
+    uint32_t lastPacketDecoded = -PACKET_TIMEOUT;
+    uint32_t lastFrameReceived = 0;
+    volatile boolean packetAvailable = false;
+    uint8_t meterId[4];
+    uint8_t aesKey[16];
     inline void selectCC1101(void);
     inline void deselectCC1101(void);
     inline void waitMiso(void);
+    static const uint8_t MAX_LENGTH = 64;
+    CTR<AESSmall128> aes128;
+    uint8_t cipher[MAX_LENGTH];
+    uint8_t plaintext[MAX_LENGTH];
+    uint8_t iv[16];
+    bool isValid = false; // true, if meter information is valid for the last received frame
+    uint8_t length = 0; // payload length
+    uint8_t payload[MAX_LENGTH]; // payload data
+    uint32_t totalWater;
+    uint32_t targetWater;
+    uint32_t lastTarget=0;
+    uint8_t flowTemp;
+    uint8_t ambientTemp;
+    uint8_t infoCodes;
+
+    PubSubClient &mqttClient;
+    bool mqttEnabled;
+
+ // reset HW and restart receiver
+    void restartRadio(void);
 
     // flush fifo and (re)start receiver
     void startReceiver(void);
 
-    // burst write registers of cc1101
-    void writeBurstReg(uint8_t regaddr, uint8_t* buffer, uint8_t len);
-
-    // burst read registers of cc1101
+    //void writeBurstReg(uint8_t regaddr, uint8_t* buffer, uint8_t len);
     void readBurstReg(uint8_t * buffer, uint8_t regaddr, uint8_t len);
-
-    // strobe command
     void cmdStrobe(uint8_t cmd);
-
-    // read a register of cc1101
     uint8_t readReg(uint8_t regaddr, uint8_t regtype);
-
-    // read a byte from fifo
     uint8_t readByteFromFifo(void);
-
-    // write a register of cc1101
     void writeReg(uint8_t regaddr, uint8_t value);
-
-    // initialize cc1101 registers
     void initializeRegisters(void);
-
-    // reset cc1101
     void reset(void);
 
+    // static ISR calls instanceISR via this pointer
+    IRAM_ATTR static void cc1101Isr(void *p);
+
     // receive a wmbus frame 
-    void receive(WMBusFrame *payload);
+    void receive(void); // read frame from CC1101
+    bool checkFrame(void);  // check id, CRC
+    void getMeterInfo(uint8_t *data, size_t len);
+    void publishMeterInfo();
     
   public:
 
     // constructor
-    WaterMeter(void);
+    WaterMeter(PubSubClient &mqtt);
+    
+    void enableMqtt(bool enable);
 
     // startup CC1101 for receiving wmbus mode c 
-    void begin();
+    void begin(uint8_t *key, uint8_t *id);
 
-    // must be called frequently, returns true if a valid frame was received
-    bool isFrameAvailable(void);
+    // must be called frequently
+    void loop(void);
+
+    IRAM_ATTR void instanceCC1101Isr();
 };
 
 #endif // _WATERMETER_H_
