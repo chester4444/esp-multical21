@@ -33,7 +33,7 @@ struct CREDENTIAL {
 std::vector<CREDENTIAL> const credentials = {
      { "ssid1", "********", "", "", ""}   // no MQTT
    , { "ssid2", "********", "10.14.0.1", "", ""} // MQTT without auth
-   , { "ssid3", "********", "10.0.0.111", "mqttuser", "mqtt1234"}  // MQTT with auth
+   , { "ssid3", "********", "10.0.0.111", "mqttuser", "********"}  // MQTT with auth
 };
 
 #if defined(ESP8266)
