@@ -39,16 +39,23 @@ Provide your water meter serial number and decryption key.
 #define SERIAL_NUMBER       0x63, 0x00, 0x05, 0x43
 ```
 
-Add your Wifi credentials (ssid, password). Add your MQTT broker ip address. If your
-broker uses authentication add MQTT username/password. 
+Provide your wifi credentials (ssid, password).
+Add your optional MQTT broker ip address. If your broker uses authentication add MQTT username/password. 
 
+```
+// "ssid", "wifi_passphrase", "mqtt_broker", "mqtt_username", "mqtt_password"
+std::vector<CREDENTIAL> const credentials = {
+     { "ssid1", "********", "10.0.0.1", "mqttuser", "********"}
+```
+
+You can provide multiple wifi configurations:
 ```
 // more than one wifi credentials are supported, upper one wins
 // "ssid", "wifi_passphrase", "mqtt_broker", "mqtt_username", "mqtt_password"
 std::vector<CREDENTIAL> const credentials = {
      { "ssid1", "********", "", "", ""}   // no MQTT
    , { "ssid2", "********", "10.14.0.1", "", ""} // MQTT without auth
-   , { "ssid3", "********", "10.0.0.111", "mqttuser", "mqtt1234"}  // MQTT with auth
+   , { "ssid3", "********", "10.0.0.111", "mqttuser", "********"}  // MQTT with auth
 };
 ```
 
@@ -76,5 +83,7 @@ Connect your ESP8266/ESP32 to the CC1101 868Mhz module:
 | SCK    | D5      | 18    |
 | GDO0   | D2      | 32    |
 | GDO2   | not connected| not connected|
+
+<img src="ESP8266_CC1101.png" alt="ESP8266_CC1101" />
 
 Thanks to [weetmuts](https://github.com/weetmuts) for his great job on the wmbusmeters.
