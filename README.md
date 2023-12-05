@@ -70,8 +70,6 @@ is published in **watermeter/0/total**
 #define MQTT_info "/infocode"
 ```
 
-<img align="right" src="CC1101 868MHz pinout.png" alt="CC1101" width="300"/>
-
 Connect your ESP8266/ESP32 to the CC1101 868Mhz module:
 | CC1101 | ESP8266 | ESP32 |
 |--------|:-------:|:-----:|
