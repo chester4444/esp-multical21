@@ -2,20 +2,29 @@
 ESP8266/ESP32 decrypts wireless MBus frames from a Multical21 water meter.
 
 <img align="right" src="multical21.png" alt="Multical21" width="300"/>
-A CC1101 868 MHz module is connected via SPI to the ESP8266/ESP32.
+
+### Hardware
+The hardware you need:
+<ul>
+<li>ESP8266 or ESP32 - i took an ESP8266 D1 mini clone.
+<li>CC1101 module for 868 MHz
+<li>some wires
+</ul>
+
+The CC1101 868 MHz module is [connected](#d1-mini-connected-to-different-cc1101-modules) via SPI to the ESP8266/ESP32.
+
+### Software
+The best approach to build this software is using PlatformIO. If you are not familiar with PlatformIO, [here](https://www.youtube.com/watch?v=JmvMvIphMnY) is a good place to start.
+
 The Multical21 is transmitting encrypted MBus frames (Mode C1, frame type B) every 16 seconds.
-The ESP8266/ESP32 does some validation (right serial number, crc checking) and then
+The ESP8266/ESP32 does some validation (correct serial number, crc checking) and then
 decrypts them with AES-128-CTR.
 
-The serial number (8 digits) is printed on the water meter (above the LCD).
-Ask your water supplier for the decryption key (16 bytes). I got mine packed in a so called
-KEM-file. To extract the key i used a python script [kem-decryptor.py](https://gist.github.com/mbursa/caa654a01b9e804ad44d1f00208a2490)
-
-
+### Meter values
 The Multical21 provides the following meter values:
 <ul>
 <li> total counter - total water consumption in m³
-<li> target counter - water consumption till 1. day of the current month
+<li> target counter - water consumption until 1. day of the current month
 <li> medium temperature - in °C
 <li> ambient temperature - in °C
 <li> info codes - BURST, LEAK, DRY, REVERSE, TAMPER, RADIO OFF
@@ -26,11 +35,15 @@ The UART output looks something like this:
 ```
 total: 1636.265 m³ - target: 1624.252 m³ - 13 °C - 22 °C - 0x00
 ```
-Additionally the values are sent via MQTT to a given broker.
+Additionally the meter values are sent via MQTT to a given broker.
 
 Rename [config_template.h](include/config_template.h) to _**config.h**_ and fill in some information.
 
-Provide your water meter serial number and decryption key.
+The serial number (8 digits) is printed on the water meter (above the LCD).
+Ask your water supplier for the decryption key (16 bytes). I got mine packed in a so called
+KEM-file. To extract the key i used a python script [kem-decryptor.py](https://gist.github.com/mbursa/caa654a01b9e804ad44d1f00208a2490)
+
+Provide your water meter serial number and decryption key in _**config.h**_:
 
 ```
 // ask your water supplier for your personal encryption key 
@@ -60,7 +73,7 @@ std::vector<CREDENTIAL> const credentials = {
 ```
 
 Change the MQTT prefix and the topic names as you like. Currently the water counter value
-is published in **watermeter/0/total**
+is published in **watermeter/0/total** and so on.
 ```
 #define MQTT_PREFIX "watermeter/0" 
 #define MQTT_total "/total"
@@ -70,7 +83,10 @@ is published in **watermeter/0/total**
 #define MQTT_info "/infocode"
 ```
 
-Connect your ESP8266/ESP32 to the CC1101 868Mhz module:
+### Connect your ESP8266/ESP32 to the CC1101 868Mhz module:
+
+<div align="center">
+
 | CC1101 | ESP8266 | ESP32 |
 |--------|:-------:|:-----:|
 | VCC    | 3V3     | 3V3   |
@@ -81,7 +97,13 @@ Connect your ESP8266/ESP32 to the CC1101 868Mhz module:
 | SCK    | D5      | 18    |
 | GDO0   | D2      | 32    |
 | GDO2   | not connected| not connected|
+</div>
+
+### D1 Mini connected to different CC1101 modules:
 
 <img src="ESP8266_CC1101.png" alt="ESP8266_CC1101" />
 
+<img src="ESP8266_CC1101b.png" alt="ESP8266_CC1101b" />
+
+### Credit
 Thanks to [weetmuts](https://github.com/weetmuts) for his great job on the wmbusmeters.
