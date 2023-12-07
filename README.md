@@ -1,7 +1,8 @@
 # esp-multical21
 ESP8266/ESP32 decrypts wireless MBus frames from a Multical21 water meter.
 
-<img align="right" src="multical21.png" alt="Multical21" width="300"/>
+<!--img align="right" src="overview.png" alt="overview" width="300"/-->
+<img src="overview.png" alt="overview" width="70%"/>
 
 ### Hardware
 The hardware you need:
