@@ -1,5 +1,5 @@
 # esp-multical21
-ESP8266/ESP32 decrypts wireless MBus frames from a Multical21 water meter.
+ESP8266/ESP32 decrypts wireless MBus frames from multiple Multical21 water meter.
 
 <!--img align="right" src="overview.png" alt="overview" width="300"/-->
 <img src="overview.png" alt="overview" width="70%"/>
@@ -7,7 +7,7 @@ ESP8266/ESP32 decrypts wireless MBus frames from a Multical21 water meter.
 ### Hardware
 The hardware you need:
 <ul>
-<li>ESP8266 or ESP32 - i took an ESP8266 D1 mini clone.
+<li>ESP8266 or ESP32 - i chose an ESP8266 D1 mini clone.
 <li>CC1101 module for 868 MHz
 <li>some wires
 </ul>
@@ -17,12 +17,12 @@ The CC1101 868 MHz module is [connected](#d1-mini-connected-to-different-cc1101-
 ### Software
 The best approach to build this software is using PlatformIO. If you are not familiar with PlatformIO, [here](https://www.youtube.com/watch?v=JmvMvIphMnY) is a good place to start.
 
-The Multical21 is transmitting encrypted MBus frames (Mode C1, frame type B) every 16 seconds.
-The ESP8266/ESP32 does some validation (correct serial number, crc checking) and then
-decrypts them with AES-128-CTR.
+The Multical21 is transmitting encrypted MBus frames (Mode C1, frame type B) every 16 seconds - every 8th frame carries extended
+information (DIF/VIF info). The ESP8266/ESP32 configures the CC1101 for receiving that kind of frames. After receiption the ESP8266/ESP32 does some validation (is it the right water meter, frame crc checking) and then
+decrypts them with AES-128-CTR to get to the current meter values.
 
 ### Meter values
-The Multical21 provides the following meter values:
+My Multical21 provides the following meter values:
 <ul>
 <li> total counter - total water consumption in m³
 <li> target counter - water consumption until 1. day of the current month
@@ -31,6 +31,8 @@ The Multical21 provides the following meter values:
 <li> info codes - BURST, LEAK, DRY, REVERSE, TAMPER, RADIO OFF
 </ul>
 
+Maybe your multical21 is transmitting a different set of meter values.
+To find out what exactly is transmitted, the DIF/VIF part of the long frames should be taken in account (TBD).
 The ESP8266/ESP32 prints out the current meter values via UART (baudrate: 115200). 
 The UART output looks something like this:
 ```

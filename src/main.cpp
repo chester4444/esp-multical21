@@ -21,20 +21,34 @@
 #endif
 #include <PubSubClient.h>
 #include <ArduinoOTA.h>
+#include "CC1101Wmbus.h"
 #include "WaterMeter.h"
 //#include "config.h"
 
-CREDENTIAL currentWifi; // global to store found wifi
+WIFI_CREDENTIAL currentWifi; // global to store found wifi
 
 uint8_t wifiConnectCounter = 0; // count retries
 
 WiFiClient espMqttClient;
 PubSubClient mqttClient(espMqttClient);
+CC1101Wmbus cc1101Wmbus;
 WaterMeter waterMeter(mqttClient);
 
 char MyIp[16];
 int cred = -1;
 bool mqttEnabled = false;   // true, if a broker is given in credentials.h
+
+void radioCallback(uint8_t *payload)
+{
+  uint length = payload[0]; // length is at index 0
+  if (length == 0)
+  {
+    Serial.println("Received empty frame");
+    return;
+  }
+
+  waterMeter.processFrame(payload);
+}
 
 bool ConnectWifi(void)
 {
@@ -65,7 +79,7 @@ bool ConnectWifi(void)
   }
 
   // search for given credentials
-  for (CREDENTIAL credential : credentials)
+  for (WIFI_CREDENTIAL credential : wifiCredentials)
   {
     for (int j = 0; j < numSsid; ++j)
     {
@@ -89,8 +103,8 @@ bool ConnectWifi(void)
   Serial.println(WiFi.macAddress());
 
   // try to connect WPA
+  WiFi.hostname(ESP_NAME);
   WiFi.begin(currentWifi.ssid, currentWifi.password);
-  WiFi.setHostname(ESP_NAME);
   Serial.println("");
   Serial.print("Connecting to WiFi ");
   Serial.println(currentWifi.ssid);
@@ -251,14 +265,30 @@ void setupOTA()
 
 void setup()
 {
-    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(PIN_LED_BUILTIN, OUTPUT);
 
     Serial.begin(115200);
 
-    uint8_t key[16] = { ENCRYPTION_KEY }; // AES-128 key
-    uint8_t id[4] = { SERIAL_NUMBER }; // Multical21 serial number
+    Serial.println();
+    Serial.println("Starting up... " ESP_NAME);
 
-    waterMeter.begin(key, id);
+    uint8_t key[16];
+    uint8_t id[4];
+    hex2bin(DRINKING_WATER_KEY, sizeof(key), key);
+    hex2bin(DRINKING_WATER_ID, sizeof(id), id);
+    waterMeter.registerMeter(0, key, id);
+    hex2bin(UTILITY_WATER_KEY1, sizeof(key), key);
+    hex2bin(UTILITY_WATER_ID1, sizeof(id), id);
+    waterMeter.registerMeter(1, key, id);
+    hex2bin(UTILITY_WATER_KEY2, sizeof(key), key);
+    hex2bin(UTILITY_WATER_ID2, sizeof(id), id);
+    waterMeter.registerMeter(2, key, id);
+
+    cc1101Wmbus.setCallback(radioCallback);
+    if (!cc1101Wmbus.begin())
+    {
+      Serial.println("Failed to initialize CC1101 - check wiring");
+    }
     Serial.println("Setup done...");
 }
 
@@ -340,7 +370,7 @@ void loop()
 
     case StateMqttConnect:
       Serial.println("StateMqttConnect:");
-      digitalWrite(LED_BUILTIN, HIGH); // off
+      digitalWrite(PIN_LED_BUILTIN, HIGH); // off
 
       waterMeter.enableMqtt(false);
 
@@ -390,7 +420,7 @@ void loop()
           mqttSubscribe();
           
           ControlState = StateOperating;
-          digitalWrite(LED_BUILTIN, LOW); // on
+          digitalWrite(PIN_LED_BUILTIN, LOW); // on
           Serial.println("StateOperating:");
           //mqttDebug("up and running");
         }
@@ -424,7 +454,7 @@ void loop()
       }
 
       // here we go
-      waterMeter.loop();
+      cc1101Wmbus.loop();
 
       ArduinoOTA.handle();
 
@@ -432,7 +462,7 @@ void loop()
 
     case StateOperatingNoWifi:
 
-      waterMeter.loop();
+      cc1101Wmbus.loop();
       break;
 
     default:
