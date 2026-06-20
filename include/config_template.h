@@ -15,12 +15,12 @@
 
   // ask your water supplier for your personal encryption key 
   // serial number is printed on your multical21
-  constexpr char const* DRINKING_WATER_ID =  "74350917";
-  constexpr char const* DRINKING_WATER_KEY = "FED0806793A0FAF6277414D1EDF6E8C8";
-  constexpr char const* UTILITY_WATER_ID1 =  "74350765";
-  constexpr char const* UTILITY_WATER_KEY1 = "84E96ABC017069A2A0A0F43319FD8D13";
-  constexpr char const* UTILITY_WATER_ID2 =  "74027621";
-  constexpr char const* UTILITY_WATER_KEY2 = "C05137278441B0A4F08FC891F6D2B1B5";
+  constexpr char const* DRINKING_WATER_ID =  "74123456";
+  constexpr char const* DRINKING_WATER_KEY = "00112233445566778899AABBCCDDEEFF";
+  constexpr char const* UTILITY_WATER_ID1 =  "75123456";
+  constexpr char const* UTILITY_WATER_KEY1 = "00112233445566778899AABBCCDDEEFF";
+  constexpr char const* UTILITY_WATER_ID2 =  "76123456";
+  constexpr char const* UTILITY_WATER_KEY2 = "00112233445566778899AABBCCDDEEFF";
   
   // WIFI configuration, supports more than one WIFI, first found first served
   // if you dont use MQTT, leave broker/user/pass empty ("")
