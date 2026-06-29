@@ -94,7 +94,7 @@ is published in **watermeter/0/total** and so on.
 |--------|:-------:|:-----:|
 | VCC    | 3V3     | 3V3   |
 | GND    | GND     | GND   |
-| CSN    | D8      | 4     |
+| CSN    | D8      | 5     |
 | MOSI   | D7      | 23    |
 | MISO   | D6      | 19    |
 | SCK    | D5      | 18    |
