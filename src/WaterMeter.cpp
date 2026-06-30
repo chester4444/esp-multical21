@@ -27,7 +27,15 @@ void WaterMeter::enableMqtt(bool enabled)
 
 void WaterMeter::begin()
 {
-  // nothing to do for now
+  radio.setCallback([this](uint8_t *payload) {
+    processFrame(payload);
+  });
+
+  if (!radio.begin())
+  {
+    Serial.println("Failed to initialize CC1101 - check wiring");
+  }
+  Serial.println("CC1101 initialized successfully");
 }
 
 void WaterMeter::registerMeter(uint8_t idx, uint8_t *key, uint8_t *id)
@@ -200,4 +208,9 @@ void WaterMeter::decryptFrame(uint8_t idx)
   Serial.println();
 
   // received packet is ok
+}
+
+void WaterMeter::loop()
+{
+  radio.loop();
 }

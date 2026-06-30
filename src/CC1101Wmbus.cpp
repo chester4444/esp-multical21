@@ -380,7 +380,7 @@ void CC1101Wmbus::receive()
   }
 }
 
-void CC1101Wmbus::setCallback(void (*callback)(uint8_t *payload))
+void CC1101Wmbus::setCallback(Callback cb)
 {
-  this->callback = callback;
+  callback = cb;
 }

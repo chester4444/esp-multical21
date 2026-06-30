@@ -20,6 +20,7 @@
 #include <AES.h>
 #include <CTR.h>
 #include <PubSubClient.h>
+#include "CC1101Wmbus.h"
 #include "config.h"
 #include "utils.h"
 
@@ -51,8 +52,12 @@ class WaterMeter
     char topic_atemp[TOPIC_MAX_LEN];
     char topic_info[TOPIC_MAX_LEN];
 
+    CC1101Wmbus radio;
     PubSubClient &mqttClient;
     bool mqttEnabled;
+
+    // check if frame is for this meter
+    void processFrame(uint8_t *payload);
 
     void decryptFrame(uint8_t idx);
     void getMeterInfo();
@@ -68,9 +73,7 @@ class WaterMeter
     // configure AES key and meter id
     void begin();
     void registerMeter(uint8_t index, uint8_t *key, uint8_t *id);
-
-    // check if frame is for this meter
-    void processFrame(uint8_t *payload);
+    void loop();
 
 };
 

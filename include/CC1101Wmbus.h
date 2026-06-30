@@ -171,7 +171,8 @@ class CC1101Wmbus
     void receive(void); // read frame from CC1101
     bool checkFrame(void);  // check id, CRC
     
-    void (*callback)(uint8_t *payload) = nullptr; // callback for received frames
+    using Callback = std::function<void(uint8_t*)>;
+    Callback callback;
 
   public:
 
@@ -184,8 +185,9 @@ class CC1101Wmbus
     // must be called frequently
     void loop(void);
 
-    void setCallback(void (*callback)(uint8_t *payload));
-  
+    //void setCallback(void (*callback)(uint8_t *payload));
+    void setCallback(Callback cb);
+
     IRAM_ATTR void instanceCC1101Isr();
 };
 
