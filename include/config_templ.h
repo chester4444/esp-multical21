@@ -67,7 +67,7 @@ std::vector<CREDENTIAL> const credentials = {
 // Attach CC1101 pins to ESP32 SPI pins
 // VCC   => 3V3
 // GND   => GND
-// CSN   => 4
+// CSN   => 5
 // MOSI  => 23
 // MISO  => 19
 // SCK   => 18
